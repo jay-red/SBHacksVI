@@ -1,6 +1,88 @@
 /* maze.css */
 
+@font-face {
+	font-family: "BitFont";
+	src: url( "../assets/BitFont.woff" );
+}
+
 html, body {
 	margin: 0px;
 	padding: 0px;
+	background-image: linear-gradient(#000000, #291a24);
+	overflow: hidden;
+}
+
+#room, #waiting {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 100vw;
+	height: 100vh;
+}
+
+#room {
+	/*display: none;*/
+}
+
+#waiting {
+	display: none;
+}
+
+#game-title, #game-subtitle, #create-room-div, #vs-title, #waiting-room-div {
+	display: block;
+	width: 100%;
+	font-family: "BitFont";
+	text-align: center;
+	color: white;
+}
+
+#game-title, #vs-title {
+	font-size: 18vh;
+}
+
+#game-title {
+	padding-top: 17vh;
+}
+
+#vs-title {
+	padding-top: 22vh;
+}
+
+#game-subtitle {
+	font-size: 3vh;
+	padding-top: 2vh;
+}
+
+#create-room-div, #waiting-room-div {
+	padding-top: 10vh;
+}
+
+#create-room-button, #waiting-room-button {
+	font-size: 9vh;
+	background-color: black;
+	padding: 3vh;
+	border-radius: 5px;
+}
+
+#create-room-button:hover, #waiting-room-button:hover {
+	background-color: #505050;
+	cursor: pointer;
+}
+
+.red-vs {
+	color: #c62828;
+	text-shadow:
+		-5px -5px 0 #290909,
+		5px -5px 0 #290909,
+		-5px 5px 0 #290909,
+		5px 5px 0 #290909;
+}
+
+.blue-vs {
+	color: #1565c0;
+	text-shadow:
+		-5px -5px 0 #041729,
+		5px -5px 0 #041729,
+		-5px 5px 0 #041729,
+		5px 5px 0 #041729;
 }

@@ -7,7 +7,7 @@ function maze_load( evt ) {
 
 	var GLOBALS = {};
 	GLOBALS[ "render" ] = {};
-	GLOBALS[ "render" ][ "canvas" ] = document.getElementById( "amazed-canvas" );
+	GLOBALS[ "render" ][ "canvas" ] = document.getElementById( "maze-canvas" );
 	GLOBALS[ "render" ][ "canvas" ].width = window.innerWidth;
 	GLOBALS[ "render" ][ "canvas" ].height = window.innerHeight;
 	GLOBALS[ "render" ][ "ctx" ] = GLOBALS[ "render" ][ "canvas" ].getContext( "2d" );
@@ -19,6 +19,15 @@ function maze_load( evt ) {
 	GLOBALS[ "maze" ][ "canvas" ].height = window.innerHeight;
 	GLOBALS[ "maze" ][ "ctx" ] = GLOBALS[ "maze" ][ "canvas" ].getContext( "2d" );
 
+	function set_pixel( data, x, y, r, g, b ) {
+		var WIDTH = GLOBALS[ "maze" ][ "canvas" ].width,
+			HEIGHT = GLOBALS[ "maze" ][ "canvas" ].height;
+		data[ y * WIDTH * 4 + x * 4 ] = r;
+		data[ y * WIDTH * 4 + x * 4 + 1 ] = g;
+		data[ y * WIDTH * 4 + x * 4 + 2 ] = b;
+		data[ y * WIDTH * 4 + x * 4 + 3 ] = 255;
+	}
+
 	function init_grid() {
 		var m = GLOBALS[ "maze" ],
 			WIDTH = GLOBALS[ "maze" ][ "canvas" ].width,
@@ -26,25 +35,12 @@ function maze_load( evt ) {
 			RATIO = CONSTANTS[ "BORDER_RATIO" ],
 			DIRECTIONS = [],
 			cell_size = 0,
-			border_size,
-			maze_width,
-			maze_height,
-			left,
-			top,
 			running = true,
-			y,
-			x,
-			cell_x,
-			cell_y,
-			offset_x,
-			offset_y,
-			direction,
-			valid,
-			d,
 			cell_stack = [],
-			data,
-			pixels,
-			ctx = GLOBALS[ "maze" ][ "ctx" ]; 
+			ctx = GLOBALS[ "maze" ][ "ctx" ];
+		
+		var border_size, maze_width, maze_height, left, top, y, x, cell_x, cell_y, offset_x, offset_y, direction, valid, d, data, pixels;	
+		ctx.clearRect( 0, 0, WIDTH, HEIGHT );
 		pixels = ctx.getImageData( 0, 0, WIDTH, HEIGHT );
 		data = pixels.data;
 		while( running ) {
@@ -63,83 +59,30 @@ function maze_load( evt ) {
 		maze_height = ( ( cell_size + border_size ) * CONSTANTS.MAZE_HEIGHT + border_size );	
 		left = ( ( ( WIDTH - maze_width ) | 0 ) / 2 ) | 0;
 		top = ( ( ( HEIGHT - maze_height ) | 0 ) / 2 ) | 0;
-		for( y = 0; y < maze_height; y++ ) {
-			for( x = 0; x < maze_width; x++ ) {
-				data[ ( y + top ) * WIDTH * 4 + ( x + left ) * 4 ] = 0;
-				data[ ( y + top ) * WIDTH * 4 + ( x + left ) * 4 + 1 ] = 0;
-				data[ ( y + top ) * WIDTH * 4 + ( x + left ) * 4 + 2 ] = 0;
-				data[ ( y + top ) * WIDTH * 4 + ( x + left ) * 4 + 3 ] = 255;
-			}
-		}
+		
+		for( y = 0; y < maze_height; y++ ) for( x = 0; x < maze_width; x++ ) set_pixel( data, x + left, y + top, 10, 10, 10 );
 		
 		cell_x = border_size;
 		cell_y = border_size;
 		cell_stack.push( [ cell_x, cell_y ] );
 
-		for( y = 0; y < cell_size; ++y ) {
-			for( x = 0; x < cell_size; ++x ) {
-				data[ ( y + top + cell_y ) * WIDTH * 4 + ( x + left + cell_x ) * 4 ] = 255;
-				data[ ( y + top + cell_y ) * WIDTH * 4 + ( x + left + cell_x ) * 4 + 1 ] = 255;
-				data[ ( y + top + cell_y ) * WIDTH * 4 + ( x + left + cell_x ) * 4 + 2 ] = 255;
-				data[ ( y + top + cell_y ) * WIDTH * 4 + ( x + left + cell_x ) * 4 + 3 ] = 255;
-			}
-		}
+		for( y = 0; y < cell_size; ++y ) for( x = 0; x < cell_size; ++x ) set_pixel( data, x + left + cell_x, y + top + cell_y, 46, 30, 33 );
 
 		while( cell_stack.length > 0 ) {
-			d = ( Math.random() * 4 ) | 0;
-			direction = DIRECTIONS[ d ];
 			valid = false;
-			if( cell_x + direction[ 0 ] < maze_width && cell_x + direction[ 0 ] > 0 ) {
-				if( cell_y + direction[ 1 ] < maze_height && cell_y + direction[ 1 ] > 0 ) {
-					if( data[ ( top + cell_y + direction[ 1 ] ) * WIDTH * 4 + ( left + cell_x + direction[ 0 ] ) * 4 ] != 255 ) {
-						valid = true;
-					}
-				}
-			}
-			if( !valid ) d = ( d + 1 ) % 4;
-			direction = DIRECTIONS[ d ];
-			if( !valid && cell_x + direction[ 0 ] < maze_width && cell_x + direction[ 0 ] > 0 ) {
-				if( cell_y + direction[ 1 ] < maze_height && cell_y + direction[ 1 ] > 0 ) {
-					if( data[ ( top + cell_y + direction[ 1 ] ) * WIDTH * 4 + ( left + cell_x + direction[ 0 ] ) * 4 ] != 255 ) {
-						valid = true;
-					}
-				}
-			}
-			if( !valid ) d = ( d + 1 ) % 4;
-			direction = DIRECTIONS[ d ];
-			if( !valid && cell_x + direction[ 0 ] < maze_width && cell_x + direction[ 0 ] > 0 ) {
-				if( cell_y + direction[ 1 ] < maze_height && cell_y + direction[ 1 ] > 0 ) {
-					if( data[ ( top + cell_y + direction[ 1 ] ) * WIDTH * 4 + ( left + cell_x + direction[ 0 ] ) * 4 ] != 255 ) {
-						valid = true;
-					}
-				}
-			}
-			if( !valid ) d = ( d + 1 ) % 4;
-			direction = DIRECTIONS[ d ];
-			if( !valid && cell_x + direction[ 0 ] < maze_width && cell_x + direction[ 0 ] > 0 ) {
-				if( cell_y + direction[ 1 ] < maze_height && cell_y + direction[ 1 ] > 0 ) {
-					if( data[ ( top + cell_y + direction[ 1 ] ) * WIDTH * 4 + ( left + cell_x + direction[ 0 ] ) * 4 ] != 255 ) {
-						valid = true;
-					}
-				}
+			d = ( Math.random() * 4 ) | 0;
+			for( x = 0; x < 4; x++ ) {
+				if( !valid ) d = ( d + 1 ) % 4;
+				direction = DIRECTIONS[ d ];
+				if( cell_x + direction[ 0 ] < maze_width && cell_x + direction[ 0 ] > 0 ) if( cell_y + direction[ 1 ] < maze_height && cell_y + direction[ 1 ] > 0 ) if( data[ ( top + cell_y + direction[ 1 ] ) * WIDTH * 4 + ( left + cell_x + direction[ 0 ] ) * 4 ] != 46 ) valid = true;
 			}
 			if( valid ) {
 				offset_x = offset_y = 0;
-				if( direction[ 0 ] > 0 ) {
-					offset_x = -border_size;
-				} else if( direction[ 1 ] > 0 ) {
-					offset_y = -border_size;
-				}
+				if( direction[ 0 ] > 0 ) offset_x = -border_size;
+				else if( direction[ 1 ] > 0 ) offset_y = -border_size;
 				cell_x += direction[ 0 ];
 				cell_y += direction[ 1 ];
-				for( y = 0; y < Math.max( cell_size, Math.abs( direction[ 1 ] ) ); ++y ) {
-					for( x = 0; x < Math.max( cell_size, Math.abs( direction[ 0 ] ) ); ++x ) {
-						data[ ( y + top + cell_y + offset_y ) * WIDTH * 4 + ( x + left + cell_x + offset_x ) * 4 ] = 255;
-						data[ ( y + top + cell_y + offset_y ) * WIDTH * 4 + ( x + left + cell_x + offset_x ) * 4 + 1 ] = 255;
-						data[ ( y + top + cell_y + offset_y ) * WIDTH * 4 + ( x + left + cell_x + offset_x ) * 4 + 2 ] = 255;
-						data[ ( y + top + cell_y + offset_y ) * WIDTH * 4 + ( x + left + cell_x + offset_x ) * 4 + 3 ] = 255;
-					}
-				}
+				for( y = 0; y < Math.max( cell_size, Math.abs( direction[ 1 ] ) ); ++y ) for( x = 0; x < Math.max( cell_size, Math.abs( direction[ 0 ] ) ); ++x ) set_pixel( data, x + left + cell_x + offset_x, y + top + cell_y + offset_y, 46, 30, 33 );
 				cell_stack.push( [ cell_x, cell_y ] );
 			} else {
 				cell_x = cell_stack.pop();
@@ -148,16 +91,19 @@ function maze_load( evt ) {
 			}
 		}
 
-		/*for( y = 0; y < cell_size + border_size; ++y ) {
-			for( x = 0; x < cell_size + border_size; ++x ) {
-				
-			}
-		}*/
 		ctx.putImageData( pixels, 0, 0, 0, 0, WIDTH, HEIGHT );
+		GLOBALS[ "render" ][ "ctx" ].clearRect( 0, 0, WIDTH, HEIGHT );
 		GLOBALS[ "render" ][ "ctx" ].drawImage( GLOBALS[ "maze" ][ "canvas" ], 0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT );
 	}
 
 	init_grid();
+	setInterval( function() {
+		CONSTANTS[ "MAZE_WIDTH" ] = ( CONSTANTS[ "MAZE_WIDTH" ] + 1 ) % 46;
+		CONSTANTS[ "MAZE_HEIGHT" ] = ( CONSTANTS[ "MAZE_HEIGHT" ] + 1 ) % 46;
+		if( CONSTANTS[ "MAZE_WIDTH" ] == 0 ) CONSTANTS[ "MAZE_WIDTH" ] = 4;
+		if( CONSTANTS[ "MAZE_HEIGHT" ] == 0 ) CONSTANTS[ "MAZE_HEIGHT" ] = 4;
+		init_grid();
+	}, 250 );
 }
 
 window.addEventListener( "load", maze_load );
