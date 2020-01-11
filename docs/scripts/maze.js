@@ -1,8 +1,8 @@
 function maze_load( evt ) {
 	var CONSTANTS = {};
 
-	CONSTANTS[ "MAZE_WIDTH" ] = 40;
-	CONSTANTS[ "MAZE_HEIGHT" ] = 20;
+	CONSTANTS[ "MAZE_WIDTH" ] = 4;
+	CONSTANTS[ "MAZE_HEIGHT" ] = 4;
 	CONSTANTS[ "BORDER_RATIO" ] = 0.2;
 
 	var GLOBALS = {};
