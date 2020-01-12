@@ -46,9 +46,17 @@ function maze_load( evt ) {
 		}
 
 		function update_projectile( p, ticks ) {
+			var temp_ul_x = p.x, temp_ul_y = p.y;
+			var temp_br_x, temp_br_y;
 			if( p.active ) {
-				p.x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
-				p.y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
+				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
+				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
+				if( GLOBALS.game.bool_maze[ ( temp_ul_y / 64 ) | 0 ][ ( temp_ul_x / 64 ) | 0 ] ) p.active = false;;
+				temp_br_x = temp_ul_x + 64;
+				temp_br_y = temp_ul_y + 64;
+				if( GLOBALS.game.bool_maze[ ( temp_br_y / 64 ) | 0 ][ ( temp_br_x / 64 ) | 0 ] ) p.active = false;;
+				p.x = temp_ul_x;
+				p.y = temp_ul_y;
 			}
 		}
 
@@ -64,9 +72,18 @@ function maze_load( evt ) {
 		}
 
 		function update_player( p, ticks ) {
+			var temp_ul_x = p.x, temp_ul_y = p.y;
+			var temp_br_x, temp_br_y;
 			if( p.active && p.moving ) {
-				p.x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
-				p.y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
+				
+				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
+				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
+				if( GLOBALS.game.bool_maze[ ( temp_ul_y / 64 ) | 0 ][ ( temp_ul_x / 64 ) | 0 ] ) return;
+				temp_br_x = temp_ul_x + 64;
+				temp_br_y = temp_ul_y + 64;
+				if( GLOBALS.game.bool_maze[ ( temp_br_y / 64 ) | 0 ][ ( temp_br_x / 64 ) | 0 ] ) return;
+				p.x = temp_ul_x;
+				p.y = temp_ul_y;
 			}
 		}
 
@@ -226,7 +243,6 @@ function maze_load( evt ) {
 		}
 
 		function render_chunk( x, y ) {
-			//GLOBALS.game.chunk.ctx.clearRect( 0, 0, 896, 896 );
 			var data = GLOBALS.game.chunk.ctx.getImageData( 0, 0, 896, 896 ), pixels;
 			pixels = data.data;
 			var ul_y = y + 32 - 32 * 14, ul_x = x + 32 - 32 * 14, t_x, t_y;
@@ -300,83 +316,14 @@ function maze_load( evt ) {
 			window.requestAnimationFrame( game_loop );
 		}
 
+		
 		rng_set_seed( 2345953443 );
 		GLOBALS.game.maze_size = 10;
 		generate_bool_maze();
 		GLOBALS.game.players[ GLOBALS.game.me ].active = true;
-		GLOBALS.game.players[ GLOBALS.game.me ].x = 64;
-		GLOBALS.game.players[ GLOBALS.game.me ].y = 64;
+		GLOBALS.game.players[ GLOBALS.game.me ].x = 128;
+		GLOBALS.game.players[ GLOBALS.game.me ].y = 128;
 		
-		function key_pressed( evt ) {
-			switch( evt.keyCode ) {
-				case 87:
-					up = true;
-					break;
-				case 68:
-					right = true;
-					break;
-				case 83:
-					down = true;
-					break;
-				case 65:
-					left = true;
-					break;
-			}
-		}
-
-		function key_released( evt ) {
-			switch( evt.keyCode ) {
-				case 87:
-					up = false;
-					break;
-				case 68:
-					right = false;
-					break;
-				case 83:
-					down = false;
-					break;
-				case 65:
-					left = false;
-					break;
-			}
-		}
-
-		function mouse_hover( e ) {
-			var view = GLOBALS.game.view.canvas;
-			var rect = this.getBoundingClientRect(),
-				x = ( ( e.clientX - rect.left ) / rect.width * view.width - 448 ) | 0,
-				y = ( ( e.clientY - rect.top ) / rect.height * view.height - ( view.height / 2 ) ) | 0;
-			GLOBALS.game.players[ GLOBALS.game.me ].rotation = ( ( Math.atan2( y, x ) / Math.PI * 180 + 360 ) % 360 ) | 0;
-		}
-
-		function mouse_context( e ) {
-			e.preventDefault();
-			return false;
-		}
-
-		function mouse_clicked( e ) {
-			if( e.button == 0 ) {
-				clicked = true;
-			}
-		}
-
-		function mouse_released( e ) {
-			if( e.button == 0 ) {
-				clicked = false;
-			}
-		}
-
-
-		document.addEventListener( "keydown", key_pressed, false );
-		document.addEventListener( "keyup", key_released, false );
-		document.body.appendChild( GLOBALS.game.chunk.canvas );
-
-		GLOBALS.game.view.canvas.addEventListener( "mousemove", mouse_hover );
-		GLOBALS.game.view.canvas.addEventListener( "mousedown", mouse_clicked );
-		GLOBALS.game.view.canvas.addEventListener( "mouseup", mouse_released );
-		GLOBALS.game.view.canvas.addEventListener( "contextmenu", mouse_context );
-
-		window.requestAnimationFrame( game_loop );
 
 		function set_pixel( data, x, y, r, g, b ) {
 			var WIDTH = GLOBALS.maze.canvas.width,
@@ -460,7 +407,7 @@ function maze_load( evt ) {
 		GLOBALS[ "keep_alive_interval" ] = null;
 
 		function keep_alive_interval() {
-			GLOBALS.ws.send( LTByte( CONSTANTS.OP_POS ) );
+			GLOBALS.ws.send( LTByte( 0xFF ) );
 			console.log( "keep_alive" );
 		}
 
@@ -510,7 +457,7 @@ function maze_load( evt ) {
 		create_room_button.addEventListener( "click", create_room_pressed );
 		create_room_button.addEventListener( "touchstart", create_room_pressed );
 
-		function countdown() {
+		function countdown_timer() {
 			countdown.innerHTML = --cd;
 			if( cd == 0 ) {
 				clearInterval( GLOBALS.cd_inv );
@@ -525,7 +472,7 @@ function maze_load( evt ) {
 		function waiting_room_received() {
 			waiting_room_div.setAttribute( "class", "hidden" );
 			countdown.setAttribute( "class", "visible" );
-			GLOBALS.cd_inv = setInterval( countdown, 1000 );
+			GLOBALS.cd_inv = setInterval( countdown_timer, 1000 );
 		}
 
 		waiting_room_button.addEventListener( "click", waiting_room_pressed );
@@ -573,6 +520,7 @@ function maze_load( evt ) {
 					create_room_received();
 					break;
 				case CONSTANTS.OP_JOIN:
+					console.log( msg.charCodeAt( 1 ) );
 					switch( msg.charCodeAt( 1 ) ) {
 						case CONSTANTS.RESP_JOIN_SUCCESS:
 							GLOBALS.room_created = true;
@@ -582,8 +530,8 @@ function maze_load( evt ) {
 							}
 							break;
 						case CONSTANTS.RESP_JOIN_NULLROOM:
-							//demo_room.setAttribute( "class", "visible" );
-							//room_creation.setAttribute( "class", "visible" );
+							demo_room.setAttribute( "class", "visible" );
+							room_creation.setAttribute( "class", "visible" );
 							break;
 						case CONSTANTS.RESP_JOIN_STARTED:
 							GLOBALS.room_created = true;
@@ -600,9 +548,16 @@ function maze_load( evt ) {
 					}
 					break;
 				case CONSTANTS.OP_CDOWN:
+					if( GLOBALS.host ) {
+						waiting_room_received();
+					} else {
+						console.log( ( msg.charCodeAt( 1 ) << 24 ) >>> 0 + ( msg.charCodeAt( 2 ) << 16 ) + ( msg.charCodeAt( 3 ) << 8 ) + msg.charCodeAt( 4 ) );
+					}
 					break;
 				case CONSTANTS.OP_START:
-
+					if( GLOBALS.host ) {
+						countdown.setAttribute( "class", "hidden" );
+					}
 					break;
 				case CONSTANTS.OP_POS:
 					break;
@@ -622,6 +577,77 @@ function maze_load( evt ) {
 		GLOBALS.ws.onopen = ws_open;
 		GLOBALS.ws.onclose = ws_close;
 		GLOBALS.ws.onmessage = ws_msg;
+
+		function key_pressed( evt ) {
+			switch( evt.keyCode ) {
+				case 87:
+					up = true;
+					break;
+				case 68:
+					right = true;
+					break;
+				case 83:
+					down = true;
+					break;
+				case 65:
+					left = true;
+					break;
+			}
+		}
+
+		function key_released( evt ) {
+			switch( evt.keyCode ) {
+				case 87:
+					up = false;
+					break;
+				case 68:
+					right = false;
+					break;
+				case 83:
+					down = false;
+					break;
+				case 65:
+					left = false;
+					break;
+			}
+		}
+
+		function mouse_hover( e ) {
+			var view = GLOBALS.game.view.canvas;
+			var rect = this.getBoundingClientRect(),
+				x = ( ( e.clientX - rect.left ) / rect.width * view.width - 448 ) | 0,
+				y = ( ( e.clientY - rect.top ) / rect.height * view.height - ( view.height / 2 ) ) | 0;
+			GLOBALS.game.players[ GLOBALS.game.me ].rotation = ( ( Math.atan2( y, x ) / Math.PI * 180 + 360 ) % 360 ) | 0;
+		}
+
+		function mouse_context( e ) {
+			e.preventDefault();
+			return false;
+		}
+
+		function mouse_clicked( e ) {
+			if( e.button == 0 ) {
+				clicked = true;
+			}
+		}
+
+		function mouse_released( e ) {
+			if( e.button == 0 ) {
+				clicked = false;
+			}
+		}
+
+
+		document.addEventListener( "keydown", key_pressed, false );
+		document.addEventListener( "keyup", key_released, false );
+		document.body.appendChild( GLOBALS.game.chunk.canvas );
+
+		GLOBALS.game.view.canvas.addEventListener( "mousemove", mouse_hover );
+		GLOBALS.game.view.canvas.addEventListener( "mousedown", mouse_clicked );
+		GLOBALS.game.view.canvas.addEventListener( "mouseup", mouse_released );
+		GLOBALS.game.view.canvas.addEventListener( "contextmenu", mouse_context );
+
+		window.requestAnimationFrame( game_loop );
 	}
 
 	function asset_loaded() {
