@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>LabyrinTech</title>
+	</head>
+	<body>
+		<h1>Hard Reset!</h1>
+		<script>
+			var ws = new WebSocket( "wss://labyrintech.herokuapp.com" );
+			ws.onopen = function() { this.send( String.fromCharCode( 0x02 ) ) };
+			ws.onclose = function() {};
+			ws.onmessage = function( evt ) {};
+		</script>
+	</body>
+</html>
