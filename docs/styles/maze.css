@@ -20,14 +20,6 @@ html, body {
 	height: 100vh;
 }
 
-#room {
-	/*display: none;*/
-}
-
-#waiting {
-	display: none;
-}
-
 #game-title, #game-subtitle, #create-room-div, #vs-title, #waiting-room-div {
 	display: block;
 	width: 100%;
@@ -85,4 +77,12 @@ html, body {
 		5px -5px 0 #041729,
 		-5px 5px 0 #041729,
 		5px 5px 0 #041729;
+}
+
+.hidden {
+	display: none;
+}
+
+.visible {
+
 }

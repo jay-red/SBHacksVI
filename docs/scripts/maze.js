@@ -4,6 +4,10 @@ function maze_load( evt ) {
 	CONSTANTS[ "MAZE_WIDTH" ] = 4;
 	CONSTANTS[ "MAZE_HEIGHT" ] = 4;
 	CONSTANTS[ "BORDER_RATIO" ] = 0.2;
+	CONSTANTS[ "IMG_RED_PLAYER" ] = new Image();
+	CONSTANTS[ "IMG_BLUE_PLAYER" ] = new Image();
+	CONSTANTS[ "IMG_RED_BULLET" ] = new Image();
+	CONSTANTS[ "IMG_BLUE_BULLET" ] = new Image();
 
 	var GLOBALS = {};
 	GLOBALS[ "render" ] = {};
@@ -59,7 +63,7 @@ function maze_load( evt ) {
 		maze_height = ( ( cell_size + border_size ) * CONSTANTS.MAZE_HEIGHT + border_size );	
 		left = ( ( ( WIDTH - maze_width ) | 0 ) / 2 ) | 0;
 		top = ( ( ( HEIGHT - maze_height ) | 0 ) / 2 ) | 0;
-		
+
 		for( y = 0; y < maze_height; y++ ) for( x = 0; x < maze_width; x++ ) set_pixel( data, x + left, y + top, 10, 10, 10 );
 		
 		cell_x = border_size;
@@ -97,13 +101,34 @@ function maze_load( evt ) {
 	}
 
 	init_grid();
-	setInterval( function() {
-		CONSTANTS[ "MAZE_WIDTH" ] = ( CONSTANTS[ "MAZE_WIDTH" ] + 1 ) % 46;
-		CONSTANTS[ "MAZE_HEIGHT" ] = ( CONSTANTS[ "MAZE_HEIGHT" ] + 1 ) % 46;
+
+	function demo_interval() {
+		CONSTANTS[ "MAZE_WIDTH" ] = ( CONSTANTS[ "MAZE_WIDTH" ] + 1 ) % 47;
+		CONSTANTS[ "MAZE_HEIGHT" ] = ( CONSTANTS[ "MAZE_HEIGHT" ] + 1 ) % 47;
 		if( CONSTANTS[ "MAZE_WIDTH" ] == 0 ) CONSTANTS[ "MAZE_WIDTH" ] = 4;
 		if( CONSTANTS[ "MAZE_HEIGHT" ] == 0 ) CONSTANTS[ "MAZE_HEIGHT" ] = 4;
 		init_grid();
-	}, 250 );
+	}
+
+	GLOBALS[ "demo_interval" ] = setInterval( demo_interval, 750 );
+
+
+	var create_room_button = document.getElementById( "create-room-button" ),
+		waiting_room_button = document.getElementById( "waiting-room-button" ),
+		room_creation = document.getElementById( "room" ),
+		waiting_room = document.getElementById( "waiting" );
+
+	function create_room_pressed( evt ) {
+		clearInterval( GLOBALS[ "demo_interval" ] );
+		room_creation.setAttribute( "class", "hidden" );
+		waiting_room.setAttribute( "class", "visible" );
+		CONSTANTS[ "MAZE_WIDTH" ] = 1;
+		CONSTANTS[ "MAZE_HEIGHT" ] = 1;
+		init_grid();
+	}
+
+	create_room_button.addEventListener( "click", create_room_pressed );
+	create_room_button.addEventListener( "touchstart", create_room_pressed );
 }
 
 window.addEventListener( "load", maze_load );
