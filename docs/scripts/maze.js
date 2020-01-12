@@ -28,22 +28,70 @@ function maze_load( evt ) {
 
 	var GLOBALS = {};
 	GLOBALS[ "render" ] = {};
-	GLOBALS[ "render" ][ "canvas" ] = document.getElementById( "maze-canvas" );
-	GLOBALS[ "render" ][ "canvas" ].width = window.innerWidth;
-	GLOBALS[ "render" ][ "canvas" ].height = window.innerHeight;
-	GLOBALS[ "render" ][ "ctx" ] = GLOBALS[ "render" ][ "canvas" ].getContext( "2d" );
+	GLOBALS.render[ "canvas" ] = document.getElementById( "maze-canvas" );
+	GLOBALS.render[ "canvas" ].width = window.innerWidth;
+	GLOBALS.render[ "canvas" ].height = window.innerHeight;
+	GLOBALS.render[ "ctx" ] = GLOBALS.render[ "canvas" ].getContext( "2d" );
 
 	GLOBALS[ "maze" ] = {};
-	GLOBALS[ "maze" ][ "cell_size" ] = Math.round( 1 / CONSTANTS[ "BORDER_RATIO" ] );
-	GLOBALS[ "maze" ][ "canvas" ] = document.createElement( "canvas" );
-	GLOBALS[ "maze" ][ "canvas" ].width = window.innerWidth;
-	GLOBALS[ "maze" ][ "canvas" ].height = window.innerHeight;
-	GLOBALS[ "maze" ][ "ctx" ] = GLOBALS[ "maze" ][ "canvas" ].getContext( "2d" );
+	GLOBALS.maze[ "cell_size" ] = Math.round( 1 / CONSTANTS[ "BORDER_RATIO" ] );
+	GLOBALS.maze[ "canvas" ] = document.createElement( "canvas" );
+	GLOBALS.maze[ "canvas" ].width = window.innerWidth;
+	GLOBALS.maze[ "canvas" ].height = window.innerHeight;
+	GLOBALS.maze[ "ctx" ] = GLOBALS.maze[ "canvas" ].getContext( "2d" );
 
 	GLOBALS[ "room_created" ] = false;
 	GLOBALS[ "host" ] = false;
 	GLOBALS[ "ws" ] = null;
 	GLOBALS[ "host_count" ] = 0;
+
+	GLOBALS[ "rng" ] = {};
+	GLOBALS.rng[ "seed" ] = -1;
+	GLOBALS.rng[ "x" ] = -1;
+	GLOBALS.rng[ "y" ] = -1;
+	GLOBALS.rng[ "temp_x" ] = -1;
+	GLOBALS.rng[ "temp_y" ] = -1;
+	GLOBALS.rng[ "buffer" ] = -1;
+
+	GLOBALS[ "game" ] = {};
+	GLOBALS.game[ "bool_maze" ] = [];
+	GLOBALS.game[ "maze_size" ] = -1;
+
+	function LTUInt32( num ) {
+		return ( num & 0xFFFFFFFF ) >>> 0;
+	}
+
+	function rng_set_seed( seed ) {
+		GLOBALS.rng.seed = LTUInt32( seed );
+		GLOBALS.rng.x = LTUInt32( seed << 1 );
+		GLOBALS.rng.y = LTUInt32( seed >>> 1 );
+		rng_next_buffer();
+	}
+
+	function rng_next_buffer() {
+		GLOBALS.rng.temp_x = GLOBALS.rng.y;
+		GLOBALS.rng.x ^= LTUInt32( GLOBALS.rng.x << 23 );
+		GLOBALS.rng.temp_y = LTUInt32( GLOBALS.rng.x ^ GLOBALS.rng.y ^ ( GLOBALS.rng.x >> 17 ) ^ ( GLOBALS.rng.y >> 26 ) );
+		GLOBALS.rng.buffer = LTUInt32( GLOBALS.rng.temp_y + GLOBALS.rng.y );
+		GLOBALS.rng.x = GLOBALS.rng.temp_x;
+		GLOBALS.rng.y = GLOBALS.rng.temp_y;
+	}
+
+	function rng_next_n_bits( n ) {
+		var mask = 1;
+		for( var i = 0; i < n - 1; ++i ) {
+			mask = mask << 1;
+			mask |= 0x1;
+		}
+		mask &= GLOBALS.rng.buffer;
+		GLOBALS.rng.buffer = GLOBALS.rng.buffer >> n;
+		if( GLOBALS.rng.buffer == 0 ) rng_next_buffer();
+		return mask;
+	}
+
+	function generate_bool_maze() {
+		
+	}
 
 	function set_pixel( data, x, y, r, g, b ) {
 		var WIDTH = GLOBALS.maze.canvas.width,
@@ -172,6 +220,32 @@ function maze_load( evt ) {
 	create_room_button.addEventListener( "click", create_room_pressed );
 	create_room_button.addEventListener( "touchstart", create_room_pressed );
 
+	function update_room() {
+		var rcl = [], bcl = [], rc, bc, fn, ns;
+		rc = Math.round( GLOBALS.host_count / 2 );
+		bc = ( GLOBALS.host_count / 2 ) | 0;
+		rcl.push( ( ( rc / 100 ) | 0 ).toString() );
+		rcl.push( ( ( ( rc / 10 ) | 0 ) % 10 ).toString() );
+		rcl.push( ( rc % 10 ).toString() );
+		bcl.push( ( ( bc / 100 ) | 0 ).toString() );
+		bcl.push( ( ( ( bc / 10 ) | 0 ) % 10 ).toString() );
+		bcl.push( ( bc % 10 ).toString() );
+		red_vs.innerHTML = rcl.join( "" );
+		blue_vs.innerHTML = bcl.join( "" );
+		fn = GLOBALS.host_count * 5;
+		for( ns = 1; fn > ns * ns; ++ns );
+		if( CONSTANTS.MAZE_WIDTH != ns ) {
+			CONSTANTS.MAZE_HEIGHT = ns;
+			CONSTANTS.MAZE_WIDTH = ns;
+			init_grid();
+		}
+		if( GLOBALS.host_count >= 2 ) {
+			waiting_room_button.setAttribute( "class", "visible" );
+		} else {
+			waiting_room_button.setAttribute( "class", "hidden" );
+		}
+	}
+
 	function ws_open() {
 		this.send( LTByte( CONSTANTS.OP_JOIN ) );
 	}
@@ -192,25 +266,8 @@ function maze_load( evt ) {
 					case CONSTANTS.RESP_JOIN_SUCCESS:
 						GLOBALS.room_created = true;
 						if( GLOBALS.host ) {
-							var rcl = [], bcl = [], rc, bc, fn, ns;
 							++GLOBALS.host_count;
-							rc = Math.round( GLOBALS.host_count / 2 );
-							bc = ( GLOBALS.host_count / 2 ) | 0;
-							rcl.push( ( ( rc / 100 ) | 0 ).toString() );
-							rcl.push( ( ( ( rc / 10 ) | 0 ) % 10 ).toString() );
-							rcl.push( ( rc % 10 ).toString() );
-							bcl.push( ( ( bc / 100 ) | 0 ).toString() );
-							bcl.push( ( ( ( bc / 10 ) | 0 ) % 10 ).toString() );
-							bcl.push( ( bc % 10 ).toString() );
-							red_vs.innerHTML = rcl.join( "" );
-							blue_vs.innerHTML = bcl.join( "" );
-							fn = GLOBALS.host_count * 5;
-							for( ns = 1; fn > ns * ns; ++ns );
-							if( CONSTANTS.MAZE_WIDTH != ns ) {
-								CONSTANTS.MAZE_HEIGHT = ns;
-								CONSTANTS.MAZE_WIDTH = ns;
-								init_grid();
-							}
+							update_room();
 						}
 						break;
 					case CONSTANTS.RESP_JOIN_NULLROOM:
@@ -226,6 +283,10 @@ function maze_load( evt ) {
 				}
 				break;
 			case CONSTANTS.OP_LEAVE:
+				if( GLOBALS.host ) {
+					--GLOBALS.host_count;
+					update_room();
+				}
 				break;
 			case CONSTANTS.OP_CDOWN:
 				break;
