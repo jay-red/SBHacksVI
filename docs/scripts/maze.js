@@ -56,6 +56,12 @@ function maze_load( evt ) {
 	GLOBALS[ "game" ] = {};
 	GLOBALS.game[ "bool_maze" ] = [];
 	GLOBALS.game[ "maze_size" ] = -1;
+	GLOBALS.game[ "chunk" ] = {}
+	GLOBALS.game.chunk[ "canvas" ] = document.createElement( "canvas" );
+	GLOBALS.game.chunk.canvas.width = 1792;
+	GLOBALS.game.chunk.canvas.height = 1792;
+	GLOBALS.game.chunk[ "ctx" ] = GLOBALS.game.chunk.canvas.getContext( "2d" );
+	GLOBALS.game.me = 0;
 
 	function LTUInt32( num ) {
 		return ( num & 0xFFFFFFFF ) >>> 0;
@@ -90,8 +96,111 @@ function maze_load( evt ) {
 	}
 
 	function generate_bool_maze() {
+		var y, x, g = GLOBALS.game, b = 1, c = 5, s;
+		s = g.maze_size * ( b + c ) + b;
+		for( y = 0; y < s; ++y ) {
+			g.bool_maze.push( [] );
+			for( x = 0; x < s; ++x ) {
+				g.bool_maze[ y ].push( true );
+			}
+		}
+		var cx = b, cy = b, stk = [], v = false, d,
+			dirs = [ [ 0, -b - c ], [ b + c, 0 ], [ 0, b + c ], [ -b - c, 0 ] ],
+			offs = [ [ 0, 0 ], [ -b, 0 ], [ 0, -b ], [ 0, 0 ] ];
+		stk.push( [ cx, cy ] );
+		for( y = 0; y < c; ++y ) {
+			for( x = 0; x < c; ++x ) {
+				g.bool_maze[ y + cy ][ x + cx ] = false;
+			}
+		}
+		while( stk.length > 0 ) {
+			v = false;
+			d = rng_next_n_bits( 2 );
+			for( x = 0; x < 4; ++x ) {
+				if( !v ) d = ( d + 1 ) % 4;
+				if( !v && cx + dirs[ d ][ 0 ] > 0 && cx + dirs[ d ][ 0 ] < s ) {
+					if( cy + dirs[ d ][ 1 ] > 0 && cy + dirs[ d ][ 1 ] < s ) {
+						if( g.bool_maze[ cy + dirs[ d ][ 1 ] ][ cx + dirs[ d ][ 0 ] ] ) {
+							v = true;
+						}
+					}
+				}
+			}
+			if( v ) {
+				cy += dirs[ d ][ 1 ];
+				cx += dirs[ d ][ 0 ];
+				for( y = 0; y < Math.max( c, Math.abs( dirs[ d ][ 1 ] ) ); ++y ) {
+					for( x = 0; x < Math.max( c, Math.abs( dirs[ d ][ 0 ] ) ); ++x ) {
+						g.bool_maze[ y + cy + offs[ d ][ 1 ] ][ x + cx + offs[ d ][ 0 ] ] = false;
+					}
+				}
+				stk.push( [ cx, cy ] );
+			} else {
+				cx = stk.pop();
+				cy = cx[ 1 ];
+				cx = cx[ 0 ];
+			}
+		}
+	}
+
+	function render_pixel( pixels, x, y, ul_x, ul_y ) {
+		var eff_x = x + ul_x, eff_y = y + ul_y, m = GLOBALS.game.bool_maze.length * 256;
+		if( eff_x < 0 || eff_y + ul_y < 0 || eff_x > m || eff_y > m ) pixels[ y * 7168 + x * 4 + 3 ] = 0;
+		else {
+			var pixel_x = ( ( eff_x ) / 256 ) | 0, pixel_y = ( ( eff_y ) / 256 ) | 0;
+			pixels[ y * 7168 + x * 4 + 3 ] = 255;
+			if( GLOBALS.game.bool_maze[ pixel_y ][ pixel_x ] ) {
+				pixels[ y * 7168 + x * 4 ] = pixels[ y * 7168 + x * 4 + 1 ] = pixels[ y * 7168 + x * 4 + 2 ] = 10;
+			} else {
+				pixels[ y * 7168 + x * 4 ] = 46;
+				pixels[ y * 7168 + x * 4 + 1 ] = 30;
+				pixels[ y * 7168 + x * 4 + 2 ] = 33;		
+			}
+		}
+	}
+
+	function render_chunk( x, y ) {
+		var data = GLOBALS.game.chunk.ctx.getImageData( 0, 0, 1792, 1792 ), pixels;
+		pixels = data.data;
+		var ul_y = y - 864, ul_x = x - 864, t_x, t_y;
+		for( t_y = 0; t_y < 1792; ++t_y ) {
+			for( t_x = 0; t_x < 1792; ++t_x ) {
+				render_pixel( pixels, t_x, t_y, ul_x, ul_y );
+			}
+		}
+		GLOBALS.game.chunk.ctx.putImageData( data, 0, 0, 0, 0, 1792, 1792 );
+	}
+
+	function game_loop( ticks ) {
+		window.requestAnimationFrame( game_loop );
+	}
+
+	rng_set_seed( 2345953443 );
+	GLOBALS.game.maze_size = 10;
+	generate_bool_maze();
+	
+	function key_pressed( evt ) {
+		switch( evt.keyCode ) {
+			case 87:
+				break;
+			case 68:
+				break;
+			case 83:
+				break;
+			case 65:
+				break;
+		}
+	}
+
+	function key_released( evt ) {
 		
 	}
+
+	document.addEventListener( "keydown", key_pressed, false );
+	document.addEventListener( "keyup", key_released, false );
+	document.body.appendChild( GLOBALS.game.chunk.canvas );
+
+	window.requestAnimationFrame( game_loop );
 
 	function set_pixel( data, x, y, r, g, b ) {
 		var WIDTH = GLOBALS.maze.canvas.width,
@@ -271,8 +380,8 @@ function maze_load( evt ) {
 						}
 						break;
 					case CONSTANTS.RESP_JOIN_NULLROOM:
-						demo_room.setAttribute( "class", "visible" );
-						room_creation.setAttribute( "class", "visible" );
+						//demo_room.setAttribute( "class", "visible" );
+						//room_creation.setAttribute( "class", "visible" );
 						break;
 					case CONSTANTS.RESP_JOIN_STARTED:
 						GLOBALS.room_created = true;
