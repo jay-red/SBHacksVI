@@ -20,7 +20,7 @@ html, body {
 	height: 100vh;
 }
 
-#game-title, #game-subtitle, #create-room-div, #vs-title, #waiting-room-div {
+#game-title, #game-subtitle, #create-room-div, #vs-title, #waiting-room-div, #countdown {
 	display: block;
 	width: 100%;
 	font-family: "BitFont";
@@ -59,6 +59,19 @@ html, body {
 #create-room-button:hover, #waiting-room-button:hover {
 	background-color: #505050;
 	cursor: pointer;
+}
+
+#game-canvas {
+	image-rendering: -webkit-crisp-edges;
+	image-rendering: pixelated;
+	image-rendering: -moz-crisp-edges;
+	image-rendering: crisp-edges;
+	height: 100%;
+	width: 100%;
+}
+
+#countdown {
+	font-size: 26vh;
 }
 
 .red-vs {
