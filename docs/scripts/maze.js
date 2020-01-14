@@ -634,8 +634,8 @@ function maze_load( evt ) {
 			console.log( msg );
 		}
 
-		//GLOBALS.ws = new WebSocket( "wss://labyrintech.herokuapp.com" );
-		GLOBALS.ws = new WebSocket( "ws://localhost:5001" );
+		GLOBALS.ws = new WebSocket( "wss://labyrintech.herokuapp.com" );
+		//GLOBALS.ws = new WebSocket( "ws://localhost:5001" );
 		GLOBALS.ws.onopen = ws_open;
 		GLOBALS.ws.onclose = ws_close;
 		GLOBALS.ws.onmessage = ws_msg;
