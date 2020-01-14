@@ -1,3 +1,5 @@
+var DEBUG = true;
+
 function maze_load( evt ) {
 	var LTByte = String.fromCharCode, loaded = 0;
 
@@ -31,7 +33,7 @@ function maze_load( evt ) {
 		CONSTANTS[ "RESP_JOIN_STARTED" ] = 0x03;
 
 		CONSTANTS[ "PLAYER_VELOCITY" ] = 0.3;
-		CONSTANTS[ "PROJECTILE_VELOCITY" ] = 0.7;
+		CONSTANTS[ "PROJECTILE_VELOCITY" ] = 0.9;
 		CONSTANTS[ "ROTATION" ] = [];
 		for( i = 0; i < 360; i++ ) {
 			CONSTANTS.ROTATION.push( [ Math.cos( i / 180 * Math.PI ), Math.sin( i / 180 * Math.PI ) ] );
@@ -39,7 +41,7 @@ function maze_load( evt ) {
 
 		function Projectile( red, x, y, direction ) {
 			this.active = true;
-			this.red = true;
+			this.red = red;
 			this.direction = direction;
 			this.x = x;
 			this.y = y;
@@ -49,11 +51,11 @@ function maze_load( evt ) {
 			var temp_ul_x = p.x, temp_ul_y = p.y;
 			var temp_br_x, temp_br_y;
 			if( p.active ) {
-				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
-				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
+				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
+				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
 				if( GLOBALS.game.bool_maze[ ( temp_ul_y / 64 ) | 0 ][ ( temp_ul_x / 64 ) | 0 ] ) p.active = false;;
-				temp_br_x = temp_ul_x + 64;
-				temp_br_y = temp_ul_y + 64;
+				temp_br_x = temp_ul_x + 32;
+				temp_br_y = temp_ul_y + 32;
 				if( GLOBALS.game.bool_maze[ ( temp_br_y / 64 ) | 0 ][ ( temp_br_x / 64 ) | 0 ] ) p.active = false;;
 				p.x = temp_ul_x;
 				p.y = temp_ul_y;
@@ -69,6 +71,7 @@ function maze_load( evt ) {
 			this.health = -1;
 			this.moving = false;
 			this.last_moving = false;
+			this.last_direction = -1;
 		}
 
 		function update_player( p, ticks ) {
@@ -76,14 +79,14 @@ function maze_load( evt ) {
 			var temp_br_x, temp_br_y;
 			if( p.active && p.moving ) {
 				
-				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
-				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PLAYER_VELOCITY * ticks;
+				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PLAYER_VELOCITY * ticks + 2;
+				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PLAYER_VELOCITY * ticks + 2;
 				if( GLOBALS.game.bool_maze[ ( temp_ul_y / 64 ) | 0 ][ ( temp_ul_x / 64 ) | 0 ] ) return;
-				temp_br_x = temp_ul_x + 64;
-				temp_br_y = temp_ul_y + 64;
+				temp_br_x = temp_ul_x + 60;
+				temp_br_y = temp_ul_y + 60;
 				if( GLOBALS.game.bool_maze[ ( temp_br_y / 64 ) | 0 ][ ( temp_br_x / 64 ) | 0 ] ) return;
-				p.x = temp_ul_x;
-				p.y = temp_ul_y;
+				p.x = temp_ul_x - 2;
+				p.y = temp_ul_y - 2;
 			}
 		}
 
@@ -214,7 +217,7 @@ function maze_load( evt ) {
 
 		function render_pixel( pixels, x, y, ul_x, ul_y ) {
 			var eff_x = x + ul_x, eff_y = y + ul_y, m = GLOBALS.game.bool_maze.length * 64;
-			if( eff_x < 0 || eff_y < 0 || eff_x > m || eff_y > m ) pixels[ y * 3584 + x * 4 + 3 ] = 0;
+			if( eff_x < 0 || eff_y < 0 || eff_x >= m || eff_y >= m ) pixels[ y * 3584 + x * 4 + 3 ] = 0;
 			else {
 				var pixel_x = ( ( eff_x ) / 64 ) | 0, pixel_y = ( ( eff_y ) / 64 ) | 0;
 				pixels[ y * 3584 + x * 4 + 3 ] = 255;
@@ -243,7 +246,7 @@ function maze_load( evt ) {
 		}
 
 		function render_chunk( x, y ) {
-			var data = GLOBALS.game.chunk.ctx.getImageData( 0, 0, 896, 896 ), pixels;
+			var data = GLOBALS.game.chunk.ctx.getImageData( 0, 0, 896, 896 ), pixels, img;;
 			pixels = data.data;
 			var ul_y = y + 32 - 32 * 14, ul_x = x + 32 - 32 * 14, t_x, t_y;
 			for( t_y = 0; t_y < 896; ++t_y ) {
@@ -252,13 +255,25 @@ function maze_load( evt ) {
 				}
 			}
 			GLOBALS.game.chunk.ctx.putImageData( data, 0, 0, 0, 0, 896, 896 );
-			GLOBALS.game.chunk.ctx.translate( 448, 448 );
+			/*GLOBALS.game.chunk.ctx.translate( 448, 448 );
 			GLOBALS.game.chunk.ctx.rotate( Math.PI / 4 + .15 + ( GLOBALS.game.players[ GLOBALS.game.me ].rotation / 180 * Math.PI ) );
-			GLOBALS.game.chunk.ctx.drawImage( CONSTANTS.IMG_RED_PLAYER, 0, 0, 64, 64, -32, -32, 64, 64 );
-			GLOBALS.game.chunk.ctx.setTransform( 1, 0, 0, 1, 0, 0 );
-			var projectiles = GLOBALS.game.projectiles, img;
+			if( GLOBALS.game.me % 2 == 0 ) img = CONSTANTS.IMG_RED_PLAYER;
+			else img = CONSTANTS.IMG_BLUE_PLAYER;
+			GLOBALS.game.chunk.ctx.drawImage( img, 0, 0, 64, 64, -32, -32, 64, 64 );
+			GLOBALS.game.chunk.ctx.setTransform( 1, 0, 0, 1, 0, 0 );*/
+			var projectiles = GLOBALS.game.projectiles,
+				players = GLOBALS.game.players;
+			for( i = 0; i < GLOBALS.host_count; ++i ) {
+				if( players[ i ].active && players[ i ].x >= ul_x - 64 && players[ i ].x <= ul_x + 960 ) {
+					if( players[ i ].y >= ul_y - 64 && players[ i ].y <= ul_y + 960 ) {
+						if( i % 2 == 0 ) img = CONSTANTS.IMG_RED_PLAYER;
+						else img = CONSTANTS.IMG_BLUE_PLAYER;
+						GLOBALS.game.chunk.ctx.drawImage( img, 0, 0, 64, 64, players[ i ].x - ul_x, players[ i ].y - ul_y, 64, 64 );
+					}
+				}
+			}
 			for( i = 0; i < projectiles.length; ++i ) {
-				if( projectiles[ i ].x >= ul_x - 32 && projectiles[ i ].x <= ul_x + 928 ) {
+				if( projectiles[ i ].active && projectiles[ i ].x >= ul_x - 32 && projectiles[ i ].x <= ul_x + 928 ) {
 					if( projectiles[ i ].y >= ul_y - 32 && projectiles[ i ].y <= ul_y + 928 ) {
 						if( projectiles[ i ].red ) img = CONSTANTS.IMG_RED_BULLET;
 						else img = CONSTANTS.IMG_BLUE_BULLET;
@@ -275,7 +290,8 @@ function maze_load( evt ) {
 			var me = GLOBALS.game.players[ GLOBALS.game.me ], i;
 			var players = GLOBALS.game.players, projectiles = GLOBALS.game.projectiles;
 			if( last == -1 ) last = ticks;
-			me.last_moving = me;
+			me.last_moving = me.moving;
+			me.last_direction = me.direction;
 			me.moving = true;
 			if( !up && !down && !left && !right ) me.moving = false;
 			if( !up && !down && !left && right ) me.direction = 0;
@@ -293,13 +309,29 @@ function maze_load( evt ) {
 			if( up && down && !left && right ) me.direction = 0;
 			if( up && down && left && !right ) me.direction = 180;
 			if( up && down && left && right ) me.moving = false;
+			var packet = "";
+			if( me.last_moving && !me.moving ) {
+				packet += LTByte( CONSTANTS.OP_EMOVE ) + LTByte( ( me.x >> 24 ) & 0xFF ) + LTByte( ( me.x >> 16 ) & 0xFF ) + LTByte( ( me.x >> 8 ) & 0xFF ) + LTByte( me.x & 0xFF );
+				packet += LTByte( ( me.y >> 24 ) & 0xFF ) + LTByte( ( me.y >> 16 ) & 0xFF ) + LTByte( ( me.y >> 8 ) & 0xFF ) + LTByte( me.y & 0xFF );
+				GLOBALS.ws.send( packet );
+			} else if( !me.last_moving && me.moving ) {
+				packet += LTByte( CONSTANTS.OP_SMOVE ) + LTByte( ( me.x >> 24 ) & 0xFF ) + LTByte( ( me.x >> 16 ) & 0xFF ) + LTByte( ( me.x >> 8 ) & 0xFF ) + LTByte( me.x & 0xFF );
+				packet += LTByte( ( me.y >> 24 ) & 0xFF ) + LTByte( ( me.y >> 16 ) & 0xFF ) + LTByte( ( me.y >> 8 ) & 0xFF ) + LTByte( me.y & 0xFF );
+				packet += LTByte( ( me.direction >> 8 ) & 0xFF ) + LTByte( me.direction & 0xFF );
+				GLOBALS.ws.send( packet );
+			} else if( me.last_direction != me.direction ) {
+				packet += LTByte( CONSTANTS.OP_SMOVE ) + LTByte( ( me.x >> 24 ) & 0xFF ) + LTByte( ( me.x >> 16 ) & 0xFF ) + LTByte( ( me.x >> 8 ) & 0xFF ) + LTByte( me.x & 0xFF );
+				packet += LTByte( ( me.y >> 24 ) & 0xFF ) + LTByte( ( me.y >> 16 ) & 0xFF ) + LTByte( ( me.y >> 8 ) & 0xFF ) + LTByte( me.y & 0xFF );
+				packet += LTByte( ( me.direction >> 8 ) & 0xFF ) + LTByte( me.direction & 0xFF );
+				GLOBALS.ws.send( packet );
+			}
 			if( clicked ) {
 				if( last_fired == -1 ) {
 					last_fired = ticks;
-					GLOBALS.game.projectiles.push( new Projectile( true, me.x + 16, me.y + 16, me.rotation ) );
+					GLOBALS.game.projectiles.push( new Projectile( GLOBALS.game.me % 2 == 0, me.x + 16, me.y + 16, me.rotation ) );
 				} else if( ticks - last_fired >= 500 ) {
 					last_fired = ticks;
-					GLOBALS.game.projectiles.push( new Projectile( true, me.x + 16, me.y + 16, me.rotation ) );
+					GLOBALS.game.projectiles.push( new Projectile( GLOBALS.game.me % 2 == 0, me.x + 16, me.y + 16, me.rotation ) );
 				}
 			}
 			for( i = 0; i < players.length; ++i ) {
@@ -314,16 +346,7 @@ function maze_load( evt ) {
 			GLOBALS.game.view.ctx.clearRect( 0, 0, 896, height );
 			GLOBALS.game.view.ctx.drawImage( GLOBALS.game.chunk.canvas, 0, 448 - ( height / 2 ) | 0, 896, height, 0, 0, 896, height );
 			window.requestAnimationFrame( game_loop );
-		}
-
-		
-		rng_set_seed( 2345953443 );
-		GLOBALS.game.maze_size = 10;
-		generate_bool_maze();
-		GLOBALS.game.players[ GLOBALS.game.me ].active = true;
-		GLOBALS.game.players[ GLOBALS.game.me ].x = 128;
-		GLOBALS.game.players[ GLOBALS.game.me ].y = 128;
-		
+		}		
 
 		function set_pixel( data, x, y, r, g, b ) {
 			var WIDTH = GLOBALS.maze.canvas.width,
@@ -405,6 +428,7 @@ function maze_load( evt ) {
 		init_grid();
 
 		GLOBALS[ "keep_alive_interval" ] = null;
+		GLOBALS[ "demo_interval" ] = null;
 
 		function keep_alive_interval() {
 			GLOBALS.ws.send( LTByte( 0xFF ) );
@@ -412,6 +436,7 @@ function maze_load( evt ) {
 		}
 
 		function demo_interval() {
+			console.log( "im runnign bitch" )
 			if( !GLOBALS.room_created ) {
 				CONSTANTS.MAZE_WIDTH = ( CONSTANTS.MAZE_WIDTH + 1 ) % 47;
 				CONSTANTS.MAZE_HEIGHT = ( CONSTANTS.MAZE_HEIGHT + 1 ) % 47;
@@ -423,7 +448,6 @@ function maze_load( evt ) {
 			}
 		}
 
-		//GLOBALS[ "demo_interval" ] = setInterval( demo_interval, 750 );
 		GLOBALS.keep_alive_interval = setInterval( keep_alive_interval, 5000 );
 
 		var demo_room = document.getElementById( "maze" ),
@@ -470,6 +494,7 @@ function maze_load( evt ) {
 		}
 
 		function waiting_room_received() {
+			GLOBALS.demo_interval = setInterval( demo_interval, 750 );
 			waiting_room_div.setAttribute( "class", "hidden" );
 			countdown.setAttribute( "class", "visible" );
 			GLOBALS.cd_inv = setInterval( countdown_timer, 1000 );
@@ -532,6 +557,7 @@ function maze_load( evt ) {
 						case CONSTANTS.RESP_JOIN_NULLROOM:
 							demo_room.setAttribute( "class", "visible" );
 							room_creation.setAttribute( "class", "visible" );
+							GLOBALS.demo_interval = setInterval( demo_interval, 750 );
 							break;
 						case CONSTANTS.RESP_JOIN_STARTED:
 							GLOBALS.room_created = true;
@@ -548,22 +574,57 @@ function maze_load( evt ) {
 					}
 					break;
 				case CONSTANTS.OP_CDOWN:
+					console.log('whi');
 					if( GLOBALS.host ) {
 						waiting_room_received();
 					} else {
-						console.log( ( msg.charCodeAt( 1 ) << 24 ) >>> 0 + ( msg.charCodeAt( 2 ) << 16 ) + ( msg.charCodeAt( 3 ) << 8 ) + msg.charCodeAt( 4 ) );
+						rng_set_seed( ( ( msg.charCodeAt( 1 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 2 ) << 16 ) + ( msg.charCodeAt( 3 ) << 8 ) + msg.charCodeAt( 4 ) );
+						GLOBALS.game.me = ( ( msg.charCodeAt( 7 ) << 8 ) >>> 0 ) + ( ( msg.charCodeAt( 8 ) & 0xFF ) >>> 0 );
+						GLOBALS.host_count = ( ( msg.charCodeAt( 5 ) << 8 ) >>> 0 ) + ( ( msg.charCodeAt( 6 ) & 0xFF ) >>> 0 );
+						for( GLOBALS.game.maze_size = 1; GLOBALS.host_count * 5 > GLOBALS.game.maze_size * GLOBALS.game.maze_size; ++GLOBALS.game.maze_size );
+						console.log( GLOBALS.host_count );
+						console.log( GLOBALS.game.maze_size );
+						generate_bool_maze();
+
+						for( var i = 0; i < GLOBALS.host_count; ++i ) {
+							GLOBALS.game.players[ i ].active = true;
+							GLOBALS.game.players[ i ].x = 128;
+							GLOBALS.game.players[ i ].y = 128;
+						}
+
+						//GLOBALS.game.players[ GLOBALS.game.me ].active = true;
+						GLOBALS.game.players[ GLOBALS.game.me ].x = 128;
+						GLOBALS.game.players[ GLOBALS.game.me ].y = 128;
 					}
 					break;
 				case CONSTANTS.OP_START:
 					if( GLOBALS.host ) {
 						countdown.setAttribute( "class", "hidden" );
+					} else {
+						clearInterval( GLOBALS.keep_alive_interval );
+						window.requestAnimationFrame( game_loop );
 					}
 					break;
 				case CONSTANTS.OP_POS:
 					break;
 				case CONSTANTS.OP_SMOVE:
+					var uid = ( msg.charCodeAt( 1 ) << 8 ) + ( msg.charCodeAt( 2 ) );
+					if( uid == GLOBALS.game.players.me ) break;
+					GLOBALS.game.players[ uid ].x = ( ( msg.charCodeAt( 3 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 4 ) << 16 ) + ( msg.charCodeAt( 5 ) << 8 ) + msg.charCodeAt( 6 );
+					GLOBALS.game.players[ uid ].y = ( ( msg.charCodeAt( 7 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 8 ) << 16 ) + ( msg.charCodeAt( 9 ) << 8 ) + msg.charCodeAt( 10 );
+					GLOBALS.game.players[ uid ].direction = ( msg.charCodeAt( 11 ) << 8 ) + ( msg.charCodeAt( 12 ) );
+					GLOBALS.game.players[ uid ].moving = true;
+					console.log( "MOVING" );
+					console.log( GLOBALS.game.players[ uid ].x );
+					console.log( GLOBALS.game.players[ uid ].y );
+					console.log( GLOBALS.game.players[ uid ].direction );
 					break;
 				case CONSTANTS.OP_EMOVE:
+					var uid = ( msg.charCodeAt( 1 ) << 8 ) + ( msg.charCodeAt( 2 ) );
+					if( uid == GLOBALS.game.players.me ) break;
+					GLOBALS.game.players[ uid ].x = ( ( msg.charCodeAt( 3 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 4 ) << 16 ) + ( msg.charCodeAt( 5 ) << 8 ) + msg.charCodeAt( 6 );
+					GLOBALS.game.players[ uid ].y = ( ( msg.charCodeAt( 7 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 8 ) << 16 ) + ( msg.charCodeAt( 9 ) << 8 ) + msg.charCodeAt( 10 );
+					GLOBALS.game.players[ uid ].moving = false;
 					break;
 				case CONSTANTS.OP_SHOOT:
 					break;
@@ -573,7 +634,8 @@ function maze_load( evt ) {
 			console.log( msg );
 		}
 
-		GLOBALS.ws = new WebSocket( "wss://labyrintech.herokuapp.com" );
+		//GLOBALS.ws = new WebSocket( "wss://labyrintech.herokuapp.com" );
+		GLOBALS.ws = new WebSocket( "ws://localhost:5001" );
 		GLOBALS.ws.onopen = ws_open;
 		GLOBALS.ws.onclose = ws_close;
 		GLOBALS.ws.onmessage = ws_msg;
@@ -647,7 +709,10 @@ function maze_load( evt ) {
 		GLOBALS.game.view.canvas.addEventListener( "mouseup", mouse_released );
 		GLOBALS.game.view.canvas.addEventListener( "contextmenu", mouse_context );
 
-		window.requestAnimationFrame( game_loop );
+		if( DEBUG ) {
+			window.GLOBALS = GLOBALS;
+			window.CONSTANTS = CONSTANTS;
+		}
 	}
 
 	function asset_loaded() {
