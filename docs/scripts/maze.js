@@ -50,13 +50,18 @@ function maze_load( evt ) {
 		function update_projectile( p, ticks ) {
 			var temp_ul_x = p.x, temp_ul_y = p.y;
 			var temp_br_x, temp_br_y;
+			var s = GLOBALS.game.bool_maze.length * 64;
 			if( p.active ) {
+				if( p.x < 0 || p.y < 0 || p.x > s || p.y > s ) {
+					p.active = false;
+					return;
+				}
 				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
 				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
-				if( GLOBALS.game.bool_maze[ ( temp_ul_y / 64 ) | 0 ][ ( temp_ul_x / 64 ) | 0 ] ) p.active = false;;
+				if( GLOBALS.game.bool_maze[ ( temp_ul_y / 64 ) | 0 ][ ( temp_ul_x / 64 ) | 0 ] ) p.active = false;
 				temp_br_x = temp_ul_x + 32;
 				temp_br_y = temp_ul_y + 32;
-				if( GLOBALS.game.bool_maze[ ( temp_br_y / 64 ) | 0 ][ ( temp_br_x / 64 ) | 0 ] ) p.active = false;;
+				if( GLOBALS.game.bool_maze[ ( temp_br_y / 64 ) | 0 ][ ( temp_br_x / 64 ) | 0 ] ) p.active = false;
 				p.x = temp_ul_x;
 				p.y = temp_ul_y;
 			}
@@ -262,21 +267,37 @@ function maze_load( evt ) {
 			GLOBALS.game.chunk.ctx.drawImage( img, 0, 0, 64, 64, -32, -32, 64, 64 );
 			GLOBALS.game.chunk.ctx.setTransform( 1, 0, 0, 1, 0, 0 );*/
 			var projectiles = GLOBALS.game.projectiles,
-				players = GLOBALS.game.players;
+				players = GLOBALS.game.players,
+				vicinity = [],
+				j;
 			for( i = 0; i < GLOBALS.host_count; ++i ) {
 				if( players[ i ].active && players[ i ].x >= ul_x - 64 && players[ i ].x <= ul_x + 960 ) {
 					if( players[ i ].y >= ul_y - 64 && players[ i ].y <= ul_y + 960 ) {
 						if( i % 2 == 0 ) img = CONSTANTS.IMG_RED_PLAYER;
 						else img = CONSTANTS.IMG_BLUE_PLAYER;
 						GLOBALS.game.chunk.ctx.drawImage( img, 0, 0, 64, 64, players[ i ].x - ul_x, players[ i ].y - ul_y, 64, 64 );
+						vicinity.push( i );
 					}
 				}
 			}
+			var dx, dy;
 			for( i = 0; i < projectiles.length; ++i ) {
 				if( projectiles[ i ].active && projectiles[ i ].x >= ul_x - 32 && projectiles[ i ].x <= ul_x + 928 ) {
 					if( projectiles[ i ].y >= ul_y - 32 && projectiles[ i ].y <= ul_y + 928 ) {
 						if( projectiles[ i ].red ) img = CONSTANTS.IMG_RED_BULLET;
 						else img = CONSTANTS.IMG_BLUE_BULLET;
+						for( j = 0; j < vicinity.length; ++j ) {
+							if( projectiles[ i ].red == ( vicinity[ j ] % 2 == 1 ) ) {
+								dx = GLOBALS.game.players[ vicinity[ j ] ].x - projectiles[ i ].x + 16;
+								dy = GLOBALS.game.players[ vicinity[ j ] ].y - projectiles[ i ].y + 16;
+								dx *= dx;
+								dy *= dy;
+								if( Math.sqrt( dx + dy ) < 46 ) {
+									projectiles[ i ].active = false;
+									if( vicinity[ j ] == GLOBALS.game.me ) GLOBALS.ws.send( LTByte( CONSTANTS.OP_HEALTH ) + LTByte( 0 ) );
+								}
+							}
+						}
 						GLOBALS.game.chunk.ctx.drawImage( img, 0, 0, 32, 32, projectiles[ i ].x - ul_x, projectiles[ i ].y - ul_y, 32, 32 );
 					}
 				}
@@ -611,13 +632,13 @@ function maze_load( evt ) {
 
 						for( var i = 0; i < GLOBALS.host_count; ++i ) {
 							GLOBALS.game.players[ i ].active = true;
-							GLOBALS.game.players[ i ].x = 128;
-							GLOBALS.game.players[ i ].y = 128;
+							GLOBALS.game.players[ i ].x = 192 + 384 * ( ( i * 5 ) % GLOBALS.game.maze_size );
+							GLOBALS.game.players[ i ].y = 192 + 384 * ( ( ( i * 5 ) / GLOBALS.game.maze_size ) | 0 );
 						}
 
 						//GLOBALS.game.players[ GLOBALS.game.me ].active = true;
-						GLOBALS.game.players[ GLOBALS.game.me ].x = 128;
-						GLOBALS.game.players[ GLOBALS.game.me ].y = 128;
+						//GLOBALS.game.players[ GLOBALS.game.me ].x = 128;
+						//GLOBALS.game.players[ GLOBALS.game.me ].y = 128;
 					}
 					break;
 				case CONSTANTS.OP_START:
@@ -665,8 +686,8 @@ function maze_load( evt ) {
 			//console.log( msg );
 		}
 
-		//GLOBALS.ws = new WebSocket( "wss://labyrintech.herokuapp.com" );
-		GLOBALS.ws = new WebSocket( "ws://localhost:5001" );
+		GLOBALS.ws = new WebSocket( "wss://labyrintech.herokuapp.com" );
+		//GLOBALS.ws = new WebSocket( "ws://localhost:5001" );
 		GLOBALS.ws.onopen = ws_open;
 		GLOBALS.ws.onclose = ws_close;
 		GLOBALS.ws.onmessage = ws_msg;
