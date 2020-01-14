@@ -64,8 +64,8 @@ function maze_load( evt ) {
 
 		function Player() {
 			this.active = false;
-			this.rotation = -1;
-			this.direction = -1;
+			this.rotation = 0;
+			this.direction = 0;
 			this.x = -1;
 			this.y = -1;
 			this.health = -1;
@@ -310,7 +310,7 @@ function maze_load( evt ) {
 			if( up && down && left && !right ) me.direction = 180;
 			if( up && down && left && right ) me.moving = false;
 			var packet = "";
-			if( me.last_moving && !me.moving ) {
+			/*if( me.last_moving && !me.moving ) {
 				packet += LTByte( CONSTANTS.OP_EMOVE ) + LTByte( ( me.x >> 24 ) & 0xFF ) + LTByte( ( me.x >> 16 ) & 0xFF ) + LTByte( ( me.x >> 8 ) & 0xFF ) + LTByte( me.x & 0xFF );
 				packet += LTByte( ( me.y >> 24 ) & 0xFF ) + LTByte( ( me.y >> 16 ) & 0xFF ) + LTByte( ( me.y >> 8 ) & 0xFF ) + LTByte( me.y & 0xFF );
 				GLOBALS.ws.send( packet );
@@ -324,14 +324,37 @@ function maze_load( evt ) {
 				packet += LTByte( ( me.y >> 24 ) & 0xFF ) + LTByte( ( me.y >> 16 ) & 0xFF ) + LTByte( ( me.y >> 8 ) & 0xFF ) + LTByte( me.y & 0xFF );
 				packet += LTByte( ( me.direction >> 8 ) & 0xFF ) + LTByte( me.direction & 0xFF );
 				GLOBALS.ws.send( packet );
-			}
+			}*/
+			packet += LTByte( CONSTANTS.OP_EMOVE ) + LTByte( ( me.x >> 24 ) & 0xFF ) + LTByte( ( me.x >> 16 ) & 0xFF ) + LTByte( ( me.x >> 8 ) & 0xFF ) + LTByte( me.x & 0xFF );
+			packet += LTByte( ( me.y >> 24 ) & 0xFF ) + LTByte( ( me.y >> 16 ) & 0xFF ) + LTByte( ( me.y >> 8 ) & 0xFF ) + LTByte( me.y & 0xFF );
+			packet += LTByte( ( me.direction >> 8 ) & 0xFF ) + LTByte( me.direction & 0xFF );
+			if( me.moving ) packet += LTByte( 0x01 );
+			else packet += LTByte( 0x00 );
+			GLOBALS.ws.send( packet );
+			packet = "";
 			if( clicked ) {
 				if( last_fired == -1 ) {
 					last_fired = ticks;
 					GLOBALS.game.projectiles.push( new Projectile( GLOBALS.game.me % 2 == 0, me.x + 16, me.y + 16, me.rotation ) );
+					me.x += 16;
+					me.y += 16;
+					packet += LTByte( CONSTANTS.OP_SHOOT ) + LTByte( ( me.x >> 24 ) & 0xFF ) + LTByte( ( me.x >> 16 ) & 0xFF ) + LTByte( ( me.x >> 8 ) & 0xFF ) + LTByte( me.x & 0xFF );
+					packet += LTByte( ( me.y >> 24 ) & 0xFF ) + LTByte( ( me.y >> 16 ) & 0xFF ) + LTByte( ( me.y >> 8 ) & 0xFF ) + LTByte( me.y & 0xFF );
+					packet += LTByte( ( me.rotation >> 8 ) & 0xFF ) + LTByte( me.rotation & 0xFF );
+					me.x -= 16;
+					me.y -= 16;
+					GLOBALS.ws.send( packet );
 				} else if( ticks - last_fired >= 500 ) {
 					last_fired = ticks;
 					GLOBALS.game.projectiles.push( new Projectile( GLOBALS.game.me % 2 == 0, me.x + 16, me.y + 16, me.rotation ) );
+					me.x += 16;
+					me.y += 16;
+					packet += LTByte( CONSTANTS.OP_SHOOT ) + LTByte( ( me.x >> 24 ) & 0xFF ) + LTByte( ( me.x >> 16 ) & 0xFF ) + LTByte( ( me.x >> 8 ) & 0xFF ) + LTByte( me.x & 0xFF );
+					packet += LTByte( ( me.y >> 24 ) & 0xFF ) + LTByte( ( me.y >> 16 ) & 0xFF ) + LTByte( ( me.y >> 8 ) & 0xFF ) + LTByte( me.y & 0xFF );
+					packet += LTByte( ( me.rotation >> 8 ) & 0xFF ) + LTByte( me.rotation & 0xFF );
+					me.x -= 16;
+					me.y -= 16;
+					GLOBALS.ws.send( packet );
 				}
 			}
 			for( i = 0; i < players.length; ++i ) {
@@ -606,36 +629,44 @@ function maze_load( evt ) {
 					}
 					break;
 				case CONSTANTS.OP_POS:
+					var uid = ( msg.charCodeAt( 1 ) << 8 ) + ( msg.charCodeAt( 2 ) );
+					if( uid == GLOBALS.game.me ) break;
+					GLOBALS.game.players[ uid ].x = ( ( msg.charCodeAt( 3 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 4 ) << 16 ) + ( msg.charCodeAt( 5 ) << 8 ) + msg.charCodeAt( 6 );
+					GLOBALS.game.players[ uid ].y = ( ( msg.charCodeAt( 7 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 8 ) << 16 ) + ( msg.charCodeAt( 9 ) << 8 ) + msg.charCodeAt( 10 );
+					GLOBALS.game.players[ uid ].direction = ( msg.charCodeAt( 11 ) << 8 ) + ( msg.charCodeAt( 12 ) );
+					GLOBALS.game.players[ uid ].moving = msg.charCodeAt( 3 ) == 0x01;
 					break;
 				case CONSTANTS.OP_SMOVE:
 					var uid = ( msg.charCodeAt( 1 ) << 8 ) + ( msg.charCodeAt( 2 ) );
-					if( uid == GLOBALS.game.players.me ) break;
+					if( uid == GLOBALS.game.me ) break;
 					GLOBALS.game.players[ uid ].x = ( ( msg.charCodeAt( 3 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 4 ) << 16 ) + ( msg.charCodeAt( 5 ) << 8 ) + msg.charCodeAt( 6 );
 					GLOBALS.game.players[ uid ].y = ( ( msg.charCodeAt( 7 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 8 ) << 16 ) + ( msg.charCodeAt( 9 ) << 8 ) + msg.charCodeAt( 10 );
 					GLOBALS.game.players[ uid ].direction = ( msg.charCodeAt( 11 ) << 8 ) + ( msg.charCodeAt( 12 ) );
 					GLOBALS.game.players[ uid ].moving = true;
-					console.log( "MOVING" );
-					console.log( GLOBALS.game.players[ uid ].x );
-					console.log( GLOBALS.game.players[ uid ].y );
-					console.log( GLOBALS.game.players[ uid ].direction );
 					break;
 				case CONSTANTS.OP_EMOVE:
 					var uid = ( msg.charCodeAt( 1 ) << 8 ) + ( msg.charCodeAt( 2 ) );
-					if( uid == GLOBALS.game.players.me ) break;
+					if( uid == GLOBALS.game.me ) break;
 					GLOBALS.game.players[ uid ].x = ( ( msg.charCodeAt( 3 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 4 ) << 16 ) + ( msg.charCodeAt( 5 ) << 8 ) + msg.charCodeAt( 6 );
 					GLOBALS.game.players[ uid ].y = ( ( msg.charCodeAt( 7 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 8 ) << 16 ) + ( msg.charCodeAt( 9 ) << 8 ) + msg.charCodeAt( 10 );
 					GLOBALS.game.players[ uid ].moving = false;
 					break;
 				case CONSTANTS.OP_SHOOT:
+					var uid = ( msg.charCodeAt( 1 ) << 8 ) + ( msg.charCodeAt( 2 ) );
+					if( uid == GLOBALS.game.me ) break;
+					var x = ( ( msg.charCodeAt( 3 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 4 ) << 16 ) + ( msg.charCodeAt( 5 ) << 8 ) + msg.charCodeAt( 6 ),
+						y = ( ( msg.charCodeAt( 7 ) << 24 ) >>> 0 ) + ( msg.charCodeAt( 8 ) << 16 ) + ( msg.charCodeAt( 9 ) << 8 ) + msg.charCodeAt( 10 ),
+						direction = ( msg.charCodeAt( 11 ) << 8 ) + ( msg.charCodeAt( 12 ) );
+					GLOBALS.game.projectiles.push( new Projectile( uid % 2 == 0, x, y, direction ) );
 					break;
 				case CONSTANTS.OP_HEALTH:
 					break;
 			}
-			console.log( msg );
+			//console.log( msg );
 		}
 
-		GLOBALS.ws = new WebSocket( "wss://labyrintech.herokuapp.com" );
-		//GLOBALS.ws = new WebSocket( "ws://localhost:5001" );
+		//GLOBALS.ws = new WebSocket( "wss://labyrintech.herokuapp.com" );
+		GLOBALS.ws = new WebSocket( "ws://localhost:5001" );
 		GLOBALS.ws.onopen = ws_open;
 		GLOBALS.ws.onclose = ws_close;
 		GLOBALS.ws.onmessage = ws_msg;
