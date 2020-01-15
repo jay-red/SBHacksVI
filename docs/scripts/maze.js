@@ -52,12 +52,12 @@ function maze_load( evt ) {
 			var temp_br_x, temp_br_y;
 			var s = GLOBALS.game.bool_maze.length * 64;
 			if( p.active ) {
-				if( p.x < 0 || p.y < 0 || p.x > s || p.y > s ) {
+				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
+				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
+				if( temp_ul_x < 0 || temp_ul_y < 0 || temp_ul_x + 32 > s || temp_ul_y + 32 > s ) {
 					p.active = false;
 					return;
 				}
-				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
-				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PROJECTILE_VELOCITY * ticks;
 				if( GLOBALS.game.bool_maze[ ( temp_ul_y / 64 ) | 0 ][ ( temp_ul_x / 64 ) | 0 ] ) p.active = false;
 				temp_br_x = temp_ul_x + 32;
 				temp_br_y = temp_ul_y + 32;
@@ -73,23 +73,36 @@ function maze_load( evt ) {
 			this.direction = 0;
 			this.x = -1;
 			this.y = -1;
-			this.health = -1;
+			this.health = 6;
 			this.moving = false;
 			this.last_moving = false;
 			this.last_direction = -1;
+			this.last_health = 6;
 		}
 
 		function update_player( p, ticks ) {
+			if( p.health == 0 ) {
+				p.active = false;
+				return;
+			}
 			var temp_ul_x = p.x, temp_ul_y = p.y;
+			var temp_ur_x, temp_br_y;
 			var temp_br_x, temp_br_y;
+			var temp_bl_x, temp_bl_y;
 			if( p.active && p.moving ) {
 				
 				temp_ul_x += CONSTANTS.ROTATION[ p.direction ][ 0 ] * CONSTANTS.PLAYER_VELOCITY * ticks + 2;
 				temp_ul_y += CONSTANTS.ROTATION[ p.direction ][ 1 ] * CONSTANTS.PLAYER_VELOCITY * ticks + 2;
 				if( GLOBALS.game.bool_maze[ ( temp_ul_y / 64 ) | 0 ][ ( temp_ul_x / 64 ) | 0 ] ) return;
+				temp_ur_x = temp_ul_x + 60;
+				temp_ur_y = temp_ul_y;
+				if( GLOBALS.game.bool_maze[ ( temp_ur_y / 64 ) | 0 ][ ( temp_ur_x / 64 ) | 0 ] ) return;
 				temp_br_x = temp_ul_x + 60;
 				temp_br_y = temp_ul_y + 60;
 				if( GLOBALS.game.bool_maze[ ( temp_br_y / 64 ) | 0 ][ ( temp_br_x / 64 ) | 0 ] ) return;
+				temp_bl_x = temp_ul_x;
+				temp_bl_y = temp_ul_y + 60;
+				if( GLOBALS.game.bool_maze[ ( temp_bl_y / 64 ) | 0 ][ ( temp_bl_x / 64 ) | 0 ] ) return;
 				p.x = temp_ul_x - 2;
 				p.y = temp_ul_y - 2;
 			}
@@ -138,6 +151,9 @@ function maze_load( evt ) {
 		GLOBALS.game.view.canvas.height = Math.round( window.innerHeight / window.innerWidth * 896	 );
 		GLOBALS.game.view[ "ctx" ] = GLOBALS.game.view.canvas.getContext( "2d" );
 		GLOBALS.game[ "projectiles" ] = [];
+		GLOBALS.game[ "hearts" ] = [ document.getElementById( "heart-one" ) ];
+		GLOBALS.game[ "hearts" ].push( document.getElementById( "heart-two" ) );
+		GLOBALS.game[ "hearts" ].push( document.getElementById( "heart-three" ) );
 		for( i = 0; i < 512; i++ ) GLOBALS.game.players.push( new Player );
 
 		function LTUInt32( num ) {
@@ -294,7 +310,7 @@ function maze_load( evt ) {
 								dy *= dy;
 								if( Math.sqrt( dx + dy ) < 46 ) {
 									projectiles[ i ].active = false;
-									if( vicinity[ j ] == GLOBALS.game.me ) GLOBALS.ws.send( LTByte( CONSTANTS.OP_HEALTH ) + LTByte( 0 ) );
+									if( vicinity[ j ] == GLOBALS.game.me ) GLOBALS.ws.send( LTByte( CONSTANTS.OP_HEALTH ) + LTByte( --GLOBALS.game.players[ GLOBALS.game.me ].health ) );
 								}
 							}
 						}
@@ -313,6 +329,47 @@ function maze_load( evt ) {
 			if( last == -1 ) last = ticks;
 			me.last_moving = me.moving;
 			me.last_direction = me.direction;
+			if( me.health != me.last_health ) {
+				me.last_health = me.health;
+				switch( me.health ) {
+					case 0:
+						me.active = false;
+						GLOBALS.game.hearts[ 0 ].setAttribute( "class", "heart-empty" );
+						GLOBALS.game.hearts[ 1 ].setAttribute( "class", "heart-empty" );
+						GLOBALS.game.hearts[ 2 ].setAttribute( "class", "heart-empty" );
+						break;
+					case 1:
+						GLOBALS.game.hearts[ 0 ].setAttribute( "class", "heart-half" );
+						GLOBALS.game.hearts[ 1 ].setAttribute( "class", "heart-empty" );
+						GLOBALS.game.hearts[ 2 ].setAttribute( "class", "heart-empty" );
+						break;
+					case 2:
+						GLOBALS.game.hearts[ 0 ].setAttribute( "class", "heart-full" );
+						GLOBALS.game.hearts[ 1 ].setAttribute( "class", "heart-empty" );
+						GLOBALS.game.hearts[ 2 ].setAttribute( "class", "heart-empty" );
+						break;
+					case 3:
+						GLOBALS.game.hearts[ 0 ].setAttribute( "class", "heart-full" );
+						GLOBALS.game.hearts[ 1 ].setAttribute( "class", "heart-half" );
+						GLOBALS.game.hearts[ 2 ].setAttribute( "class", "heart-empty" );
+						break;
+					case 4:
+						GLOBALS.game.hearts[ 0 ].setAttribute( "class", "heart-full" );
+						GLOBALS.game.hearts[ 1 ].setAttribute( "class", "heart-full" );
+						GLOBALS.game.hearts[ 2 ].setAttribute( "class", "heart-empty" );
+						break;
+					case 5:
+						GLOBALS.game.hearts[ 0 ].setAttribute( "class", "heart-full" );
+						GLOBALS.game.hearts[ 1 ].setAttribute( "class", "heart-full" );
+						GLOBALS.game.hearts[ 2 ].setAttribute( "class", "heart-half" );
+						break;
+					case 6:
+						GLOBALS.game.hearts[ 0 ].setAttribute( "class", "heart-full" );
+						GLOBALS.game.hearts[ 1 ].setAttribute( "class", "heart-full" );
+						GLOBALS.game.hearts[ 2 ].setAttribute( "class", "heart-full" );
+						break;
+				} 
+			}
 			me.moving = true;
 			if( !up && !down && !left && !right ) me.moving = false;
 			if( !up && !down && !left && right ) me.direction = 0;
@@ -351,6 +408,7 @@ function maze_load( evt ) {
 			packet += LTByte( ( me.direction >> 8 ) & 0xFF ) + LTByte( me.direction & 0xFF );
 			if( me.moving ) packet += LTByte( 0x01 );
 			else packet += LTByte( 0x00 );
+			
 			GLOBALS.ws.send( packet );
 			packet = "";
 			if( clicked ) {
@@ -501,6 +559,7 @@ function maze_load( evt ) {
 			countdown = document.getElementById( "countdown" ),
 			room_creation = document.getElementById( "room" ),
 			waiting_room = document.getElementById( "waiting" ),
+			game_room = document.getElementById( "game" ),
 			red_vs = document.getElementById( "red-vs" ),
 			blue_vs = document.getElementById( "blue-vs" ),
 			cd = 5;
@@ -645,6 +704,7 @@ function maze_load( evt ) {
 					if( GLOBALS.host ) {
 						countdown.setAttribute( "class", "hidden" );
 					} else {
+						game_room.setAttribute( "class", "visible" );
 						clearInterval( GLOBALS.keep_alive_interval );
 						window.requestAnimationFrame( game_loop );
 					}
@@ -681,6 +741,9 @@ function maze_load( evt ) {
 					GLOBALS.game.projectiles.push( new Projectile( uid % 2 == 0, x, y, direction ) );
 					break;
 				case CONSTANTS.OP_HEALTH:
+					var uid = ( msg.charCodeAt( 1 ) << 8 ) + ( msg.charCodeAt( 2 ) );
+					if( uid == GLOBALS.game.me ) break;
+					GLOBALS.game.players[ uid ].health = msg.charCodeAt( 3 );
 					break;
 			}
 			//console.log( msg );

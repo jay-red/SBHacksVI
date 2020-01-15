@@ -70,6 +70,12 @@ html, body {
 	width: 100%;
 }
 
+#hearts {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
 #countdown {
 	font-size: 26vh;
 }
@@ -98,4 +104,29 @@ html, body {
 
 .visible {
 
+}
+
+.heart-full {
+	background: url( "../assets/heart_full.png" );
+}
+
+.heart-half {
+	background: url( "../assets/heart_half.png" );	
+}
+
+.heart-empty {
+	background: url( "../assets/heart_empty.png" );
+}
+
+.heart-full, .heart-half, .heart-empty {
+	float: left;
+	image-rendering: -webkit-crisp-edges !important;
+	image-rendering: pixelated !important;
+	image-rendering: -moz-crisp-edges !important;
+	image-rendering: crisp-edges !important;
+	background-size: cover !important;
+	height: 10vh;
+	width: 10vh;
+	margin-top: 2vh;
+	margin-left: 2vh;
 }
